@@ -1,2 +1,3 @@
-python ../src/validate.py
+cd ../src
+python validate.py
 pause

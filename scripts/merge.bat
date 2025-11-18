@@ -1,2 +1,3 @@
-python ../src/merge.py
+cd ../src
+python merge.py
 pause
