@@ -1,2 +1,0 @@
-python validate.bat
-pause

@@ -1,3 +1,4 @@
-first.csv
-second.csv
-out.csv
+src/first.csv
+src/second.csv
+src/out.csv
+src/errors.txt

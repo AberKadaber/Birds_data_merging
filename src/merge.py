@@ -10,15 +10,18 @@ additional_column = 'Time'  # дополнительный столбец для
 first_df = pd.read_csv("first.csv", delimiter=';', encoding="windows-1251")
 second_df = pd.read_csv("second.csv", delimiter=';', encoding="windows-1251")
 
+first_df.dropna(how='all', inplace=True)
+second_df.dropna(how='all', inplace=True)
+
 
 def parse_time(time_str):
     try:
         return datetime.strptime(time_str, "%d.%m.%y")
-    except ValueError:
+    except Exception:
         try:
             return datetime.strptime(time_str, "%d.%m.%Y")
-        except ValueError as e:
-            raise e
+        except Exception as e:
+            return pd.NaT
 
 
 # Преобразуем даты в datetime объекты
