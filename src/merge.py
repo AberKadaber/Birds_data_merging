@@ -1,5 +1,8 @@
 import pandas as pd
 from datetime import datetime
+import sys
+
+sys.stdout = open("../in-out_files/not_found_rings.txt", "w", encoding='utf-8')
 
 # Названия столбцов (заполните нужными значениями)
 ring_column = 'Ring'  # столбец с номером кольца
@@ -7,8 +10,8 @@ date_column = 'Date'  # столбец с датой
 additional_column = 'Time'  # дополнительный столбец для сортировки
 
 # Чтение CSV файлов
-first_df = pd.read_csv("first.csv", delimiter=';', encoding="windows-1251")
-second_df = pd.read_csv("second.csv", delimiter=';', encoding="windows-1251")
+first_df = pd.read_csv("../in-out_files/first.csv", delimiter=';', encoding="windows-1251")
+second_df = pd.read_csv("../in-out_files/second.csv", delimiter=';', encoding="windows-1251")
 
 first_df.dropna(how='all', inplace=True)
 second_df.dropna(how='all', inplace=True)
@@ -70,4 +73,4 @@ for _, row in second_df.iterrows():
 columns = ['id'] + first_df.columns.tolist()
 output_df = pd.DataFrame(output_data, columns=columns)
 
-output_df.to_csv("out.csv", sep=';', index=False, encoding="windows-1251")
+output_df.to_csv("../in-out_files/out.csv", sep=';', index=False, encoding="windows-1251")

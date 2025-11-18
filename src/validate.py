@@ -1,11 +1,11 @@
 import pandas as pd
 import sys
 
-sys.stdout = open("errors.txt", "w", encoding="utf=8")
+sys.stdout = open("../in-out_files/errors.txt", "w", encoding="utf=8")
 
 # Названия столбцов (заполните нужными значениями)
 id_column = 'id'  # столбец с ID для группировки
-df = pd.read_csv("out.csv", delimiter=';', encoding='windows-1251')
+df = pd.read_csv("../in-out_files/out.csv", delimiter=';', encoding='windows-1251')
 
 grouped = df.groupby(id_column)
 

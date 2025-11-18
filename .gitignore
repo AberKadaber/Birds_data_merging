@@ -1,4 +1,5 @@
-src/first.csv
-src/second.csv
-src/out.csv
-src/errors.txt
+in-out_files/first.csv
+in-out_files/second.csv
+in-out_files/out.csv
+in-out_files/errors.txt
+in-out_files/not_found_rings.txt
