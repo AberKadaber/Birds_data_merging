@@ -1,0 +1,2 @@
+python validate.bat
+pause
