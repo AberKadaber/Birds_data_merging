@@ -1,0 +1,12 @@
+{
+  "lat": 22.2,
+  "lon": 1.1,
+  "utc_offset": 2.0,
+  "day_start_shift": 50,
+  "day_end_shift": 10,
+  "night_mode": "rest",
+  "night_start_shift": 0,
+  "night_end_shift": 0,
+  "exclusions_mode": "daily",
+  "exclusions": null
+}
