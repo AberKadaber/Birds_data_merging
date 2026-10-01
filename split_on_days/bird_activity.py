@@ -63,6 +63,11 @@ EXCLUSIONS_DAILY_FILE = os.path.join(
     "exclusions_daily.csv",
 )
 
+COEFFICIENTS_FILE = os.path.join(
+    SCRIPT_DIR,
+    "coefficients.json",
+)
+
 
 # ===========================================================================
 # Парсинг файлов
@@ -336,6 +341,9 @@ def load_settings():
 
             s.update(data)
 
+            if s.get("exclusions") is None:
+                s["exclusions"] = []
+
             return s
 
         except (
@@ -365,6 +373,111 @@ def save_settings(settings):
             ensure_ascii=False,
             indent=2,
         )
+
+
+# ===========================================================================
+# Коэффициенты датчиков
+# ===========================================================================
+
+def default_coefficients():
+    return {
+        f"ch{i}": 1.0
+        for i in range(
+            1,
+            NUM_CHANNELS + 1,
+        )
+    }
+
+
+def load_coefficients():
+
+    if os.path.exists(
+        COEFFICIENTS_FILE
+    ):
+
+        try:
+
+            with open(
+                COEFFICIENTS_FILE,
+                encoding="utf-8",
+            ) as f:
+
+                data = json.load(f)
+
+            coeffs = default_coefficients()
+
+            for key in coeffs:
+
+                if key in data:
+
+                    try:
+
+                        coeffs[key] = float(
+                            data[key]
+                        )
+
+                    except (
+                        ValueError,
+                        TypeError,
+                    ):
+
+                        pass
+
+            return coeffs
+
+        except (
+            json.JSONDecodeError,
+            OSError,
+        ):
+
+            print(
+                "Не удалось прочитать файл "
+                "коэффициентов, "
+                "используются значения по умолчанию."
+            )
+
+    return default_coefficients()
+
+
+def save_coefficients(coeffs):
+
+    with open(
+        COEFFICIENTS_FILE,
+        "w",
+        encoding="utf-8",
+    ) as f:
+
+        json.dump(
+            coeffs,
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+
+def format_coefficients(coeffs):
+
+    parts = []
+
+    for i in range(
+        1,
+        NUM_CHANNELS + 1,
+    ):
+
+        key = f"ch{i}"
+
+        val = coeffs.get(key, 1.0)
+
+        if val != 1.0:
+
+            parts.append(
+                f"ch{i}={val}"
+            )
+
+    if not parts:
+        return "все = 1.0"
+
+    return ", ".join(parts)
 
 
 def format_exclusions(exclusions):
@@ -421,6 +534,17 @@ def describe_settings(
         f"  Ночная активность: "
         f"{night_desc}",
     ]
+
+    # ------------------------------------------------------------------
+    # Коэффициенты
+    # ------------------------------------------------------------------
+
+    coeffs = load_coefficients()
+
+    lines.append(
+        "  Коэффициенты датчиков: "
+        + format_coefficients(coeffs)
+    )
 
     # ------------------------------------------------------------------
     # Общие исключения
@@ -575,6 +699,26 @@ def validate_interval(text):
     return True
 
 
+def validate_coefficient(text):
+
+    try:
+
+        val = float(text)
+
+        if val < 0:
+
+            return (
+                "Коэффициент должен быть "
+                "неотрицательным."
+            )
+
+        return True
+
+    except ValueError:
+
+        return "Введите число."
+
+
 # ===========================================================================
 # Интерактивный интерфейс
 # ===========================================================================
@@ -702,6 +846,113 @@ def ask_change(
         raise KeyboardInterrupt
 
     return value
+
+
+# ===========================================================================
+# Коэффициенты — интерактивный ввод
+# ===========================================================================
+
+def ask_coefficients(current_coeffs=None):
+    """
+    Интерактивный ввод коэффициентов
+    для 16 каналов.
+    """
+
+    if current_coeffs is None:
+        current_coeffs = default_coefficients()
+
+    print()
+    print("=" * 50)
+    print("КОЭФФИЦИЕНТЫ ДАТЧИКОВ")
+    print("=" * 50)
+    print()
+    print(
+        "Коэффициент умножается на "
+        "сумму активности канала."
+    )
+    print(
+        "По умолчанию все = 1.0 "
+        "(без изменения)."
+    )
+    print()
+
+    choice = questionary.select(
+        "Как задать коэффициенты?",
+        choices=[
+            "Оставить все равными 1.0",
+            "Ввести вручную",
+            "Загрузить из файла "
+            "coefficients.json",
+        ],
+    ).ask()
+
+    if choice is None:
+        raise KeyboardInterrupt
+
+    if (
+        choice
+        == "Оставить все равными 1.0"
+    ):
+
+        return default_coefficients()
+
+    if (
+        choice
+        == "Загрузить из файла "
+        "coefficients.json"
+    ):
+
+        coeffs = load_coefficients()
+
+        print()
+        print(
+            "Загруженные коэффициенты:"
+        )
+
+        for i in range(
+            1,
+            NUM_CHANNELS + 1,
+        ):
+
+            key = f"ch{i}"
+
+            print(
+                f"  Канал {i:2d}: "
+                f"{coeffs[key]}"
+            )
+
+        return coeffs
+
+    # --------------------------------------------------------------
+    # Ручной ввод
+    # --------------------------------------------------------------
+
+    coeffs = {}
+
+    for i in range(
+        1,
+        NUM_CHANNELS + 1,
+    ):
+
+        key = f"ch{i}"
+
+        default_val = current_coeffs.get(
+            key,
+            1.0,
+        )
+
+        value = questionary.text(
+            f"Канал {i}:",
+            default=str(default_val),
+            validate=validate_coefficient,
+        ).ask()
+
+        if value is None:
+            raise KeyboardInterrupt
+
+        coeffs[key] = float(value)
+
+    return coeffs
 
 
 # ===========================================================================
@@ -1262,6 +1513,17 @@ def ask_all_settings(
         dates
     )
 
+    # ------------------------------------------------------------------
+    # Коэффициенты
+    # ------------------------------------------------------------------
+
+    print()
+    print("--- Коэффициенты датчиков ---")
+
+    coeffs = ask_coefficients()
+
+    save_coefficients(coeffs)
+
     return s
 
 
@@ -1468,6 +1730,38 @@ def maybe_edit_settings(
             dates
         )
 
+    # ------------------------------------------------------------------
+    # Коэффициенты
+    # ------------------------------------------------------------------
+
+    print()
+
+    coeff_action = questionary.select(
+        "Что делать с коэффициентами датчиков?",
+        choices=[
+            "Не менять",
+            "Настроить заново",
+        ],
+    ).ask()
+
+    if coeff_action is None:
+        raise KeyboardInterrupt
+
+    if (
+        coeff_action
+        == "Настроить заново"
+    ):
+
+        current_coeffs = (
+            load_coefficients()
+        )
+
+        coeffs = ask_coefficients(
+            current_coeffs
+        )
+
+        save_coefficients(coeffs)
+
     return s
 
 
@@ -1510,14 +1804,14 @@ def in_exclusion(
 
         if start <= end:
 
-            if start <= t <= end:
+            if start <= t < end:
                 return True
 
         else:
 
             # Интервал переходит через полночь
 
-            if t >= start or t <= end:
+            if t >= start or t < end:
                 return True
 
     return False
@@ -1545,12 +1839,13 @@ def sum_interval(
     # Интервал может пересекать
     # несколько дней.
 
-    cur = start_dt
+    cur_date = start_dt.date()
+    end_date = end_dt.date()
 
-    while cur < end_dt:
+    while cur_date <= end_date:
 
         day_rows = rows_by_day.get(
-            cur.date()
+            cur_date
         )
 
         if day_rows:
@@ -1571,7 +1866,7 @@ def sum_interval(
 
                         total[ch] += vals[ch]
 
-        cur += timedelta(
+        cur_date += timedelta(
             days=1
         )
 
@@ -1666,6 +1961,18 @@ def main():
         "utc_offset"
     ]
 
+    if lat is None or lon is None or utc_offset is None:
+
+        print()
+        print(
+            "Ошибка: не заданы координаты "
+            "или смещение UTC. "
+            "Запустите программу заново и "
+            "укажите настройки."
+        )
+
+        sys.exit(1)
+
     day_start_shift = settings[
         "day_start_shift"
     ]
@@ -1693,6 +2000,9 @@ def main():
     common_exclusions = settings[
         "exclusions"
     ]
+
+    if common_exclusions is None:
+        common_exclusions = []
 
     # ------------------------------------------------------------------
     # Индивидуальные исключения
@@ -1734,6 +2044,12 @@ def main():
         )
 
     # ------------------------------------------------------------------
+    # Коэффициенты
+    # ------------------------------------------------------------------
+
+    coefficients = load_coefficients()
+
+    # ------------------------------------------------------------------
     # Расчёт
     # ------------------------------------------------------------------
 
@@ -1742,6 +2058,8 @@ def main():
     )
 
     results = {}
+
+    last_day = dates[-1]
 
     for i, d in enumerate(
         dates
@@ -1867,10 +2185,44 @@ def main():
             exclusions,
         )
 
+        if d == last_day and next_day not in rows_by_day:
+
+            print(
+                f"  Внимание: для {d.strftime('%d.%m.%Y')} "
+                "ночная активность посчитана "
+                "неполностью — нет файла "
+                f"следующего дня ({next_day.strftime('%d.%m.%Y')})."
+            )
+
         results[d] = {
             "day": day_sum,
             "night": night_sum,
         }
+
+    # ------------------------------------------------------------------
+    # Применение коэффициентов
+    # ------------------------------------------------------------------
+
+    for d in dates:
+
+        for period in ("day", "night"):
+
+            for ch in range(
+                NUM_CHANNELS
+            ):
+
+                key = f"ch{ch + 1}"
+
+                coeff = coefficients.get(
+                    key,
+                    1.0,
+                )
+
+                results[d][period][ch] = round(
+                    results[d][period][ch]
+                    * coeff,
+                    2,
+                )
 
     # ------------------------------------------------------------------
     # Запись результата
